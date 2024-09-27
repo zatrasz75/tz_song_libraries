@@ -1,0 +1,13 @@
+version: '3.9'
+services:
+  postgres:
+    env_file:
+      - .env
+    image: postgres:latest
+    container_name: tz-song-db
+    restart: always
+    ports:
+      - "49878:5432"
+
+
+# docker compose up -d

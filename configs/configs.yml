@@ -1,0 +1,22 @@
+server:
+  host: localhost
+  port: 8586
+  read-timeout: 3s
+  write-timeout: 3s
+  idle-timeout: 6s
+  shutdown-timeout: 10s
+  cors-allowed-origins:
+    - "https://api.example.com"
+    - "https://example.com"
+    - "http://localhost:8586"
+
+external:
+  url: https://api.example.com
+
+database:
+  host: postgres
+  username: zatrasz
+  password: postgrespw
+  db-url: localhost
+  db-name: db_song
+  port: 49878

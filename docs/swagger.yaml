@@ -1,0 +1,64 @@
+basePath: /
+definitions:
+  models.SongDetail:
+    properties:
+      link:
+        type: string
+      releaseDate:
+        type: string
+      text:
+        type: string
+    type: object
+  models.Songs:
+    properties:
+      ID:
+        type: integer
+      detail:
+        $ref: '#/definitions/models.SongDetail'
+      group:
+        type: string
+      song:
+        type: string
+    type: object
+host: localhost:8586
+info:
+  contact:
+    email: zatrasz@ya.ru
+    name: Михаил Токмачев
+    url: https://t.me/Zatrasz
+  title: Реализация онлайн библиотеки песен
+  version: "1.0"
+paths:
+  /songs:
+    post:
+      consumes:
+      - application/json
+      description: Принимает обязательные поля group , song .
+      parameters:
+      - description: Данные структуры песни
+        in: body
+        name: songs
+        required: true
+        schema:
+          $ref: '#/definitions/models.Songs'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешно созданная запись < Ok >
+          schema:
+            type: string
+        "400":
+          description: Неверный формат запроса или не верно заполнены обязательные
+            поля
+          schema:
+            type: string
+        "500":
+          description: Не получены детальные данные из API или ошибка при сохранении
+            в бд
+          schema:
+            type: string
+      summary: Добавление новой песни
+      tags:
+      - Songs
+swagger: "2.0"
