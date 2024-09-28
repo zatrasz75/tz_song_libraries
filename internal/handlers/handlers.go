@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,9 +15,14 @@ import (
 
 func registerSongsHandlers(s *mux.Router, a *Api) {
 	s.HandleFunc("", a.creatSongHandler).Methods(http.MethodPost)
+	s.HandleFunc("", a.getLibraryDataHandler).Methods(http.MethodGet)
+
+	// Swagger UI
+	s.PathPrefix("/docs/").Handler(http.StripPrefix("/docs/", http.FileServer(http.Dir("./docs/"))))
+	s.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 }
 
-// createUserHandler godoc
+// creatSongHandler godoc
 //
 // @Summary Добавление новой песни
 // @Tags		Songs
@@ -102,4 +108,72 @@ func _fetchSongDetail(group, song, baseUrl string) (models.SongDetail, error) {
 	}
 
 	return songDetail, nil
+}
+
+// getLibraryDataHandler godoc
+//
+// @Summary Получение данных с фильтрацией по всем полям и пагинацией
+// @Tags		Songs
+// @Description Принимает поля group , song , releaseDate , text , link .
+// @Accept  json
+// @Produce  json
+// @Param filter query string false "Фильтр по названию"
+// @Param limit query integer false "Количество записей на странице для пагинации" default(10)
+// @Param offset query integer false "Номер страницы" default(1)
+// @Success 200 {array} models.Songs "Список песен"
+// @Failure 400 {string} string "Недопустимый параметр смещения"
+// @Failure 500 {string} string "Ошибка при получение списка песен или Ошибка при обработке запроса"
+// @Router /songs [get]
+func (a *Api) getLibraryDataHandler(w http.ResponseWriter, r *http.Request) {
+	queryParams := r.URL.Query()
+
+	filter := queryParams.Get("filter")
+	limit := queryParams.Get("limit")
+	offset := queryParams.Get("offset")
+
+	var lmt, off int
+	var err error
+	if limit != "" {
+		lmt, err = strconv.Atoi(limit)
+		if err != nil || lmt <= 0 {
+			http.Error(w, "Недопустимый параметр смещения", http.StatusBadRequest)
+			return
+		}
+	} else {
+		lmt = 10
+	}
+
+	if offset != "" {
+		off, err = strconv.Atoi(offset)
+		if err != nil || off < 0 {
+			http.Error(w, "Недопустимый параметр смещения", http.StatusBadRequest)
+			return
+		}
+	} else {
+		off = 1
+	}
+
+	list, err := a.repo.GetLibraryData(filter, off, lmt)
+	if err != nil {
+		a.l.Error("Ошибка при получение списка песен", err)
+		http.Error(w, fmt.Sprintf("Ошибка при получение списка песен: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	listJSON, err := json.Marshal(list)
+	if err != nil {
+		a.l.Error("Ошибка при преобразовании данных в JSON", err)
+		http.Error(w, "Ошибка при обработке запроса", http.StatusInternalServerError)
+		return
+	}
+
+	// Устанавливаем заголовок Content-Type
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(listJSON)
+	if err != nil {
+		http.Error(w, "ошибка при отправке данных", http.StatusInternalServerError)
+		a.l.Error("ошибка при отправке данных: ", err)
+		return
+	}
 }

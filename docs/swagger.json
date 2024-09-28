@@ -13,6 +13,64 @@
     "basePath": "/",
     "paths": {
         "/songs": {
+            "get": {
+                "description": "Принимает поля group , song , releaseDate , text , link .",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Songs"
+                ],
+                "summary": "Получение данных с фильтрацией по всем полям и пагинацией",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Фильтр по названию",
+                        "name": "filter",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Количество записей на странице для пагинации",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Номер страницы",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список песен",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Songs"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Недопустимый параметр смещения",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка при получение списка песен или Ошибка при обработке запроса",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
             "post": {
                 "description": "Принимает обязательные поля group , song .",
                 "consumes": [

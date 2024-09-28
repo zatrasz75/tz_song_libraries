@@ -43,3 +43,43 @@ func (s *Store) CreatSong(m models.Songs) (int, error) {
 
 	return id, nil
 }
+
+func (s *Store) GetLibraryData(filter string, offset, limit int) ([]models.Songs, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	query := "SELECT id, s_group, song, release_date, text, link FROM songs"
+	var args []interface{}
+
+	// Добавляем фильтрацию, если параметр filter задан
+	if filter != "" {
+		query += " WHERE s_group LIKE $1 OR song LIKE $1 OR release_date LIKE $1 OR text LIKE $1 OR link LIKE $1"
+		args = append(args, "%"+filter+"%")
+	}
+
+	// Ограничиваем результаты по лимиту и смещению
+	query += " ORDER BY id LIMIT $2 OFFSET $3"
+	args = append(args, limit, (offset-1)*limit)
+
+	rows, err := s.Pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("не удалось запросить список песен: %w", err)
+	}
+	defer rows.Close()
+
+	var songs []models.Songs
+	for rows.Next() {
+		var song models.Songs
+		err = rows.Scan(&song.ID, &song.Group, &song.Song, &song.Detail.ReleaseDate, &song.Detail.Text, &song.Detail.Link)
+		if err != nil {
+			return nil, fmt.Errorf("не удалось отсканировать строку: %w", err)
+		}
+		songs = append(songs, song)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("ошибка при переборе строк: %w", err)
+	}
+
+	return songs, nil
+}
