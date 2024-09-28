@@ -17,6 +17,7 @@ func registerSongsHandlers(s *mux.Router, a *Api) {
 	s.HandleFunc("", a.creatSongHandler).Methods(http.MethodPost)
 	s.HandleFunc("", a.getLibraryDataHandler).Methods(http.MethodGet)
 	s.HandleFunc("", a.deleteSongHandler).Methods(http.MethodDelete)
+	s.HandleFunc("", a.updateSongHandler).Methods(http.MethodPatch)
 	s.HandleFunc("/lyrics", a.getSongLyricsHandler).Methods(http.MethodGet)
 
 	// Swagger UI
@@ -267,7 +268,6 @@ func (a *Api) getSongLyricsHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {string} string "Отсутствует идентификатор в запросе"
 // @Failure 500 {string} string "не удалось преобразовать строку в число или Ошибка при удалении данных"
 // @Router /songs [delete]
-// ]
 func (a *Api) deleteSongHandler(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 
@@ -296,6 +296,61 @@ func (a *Api) deleteSongHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write([]byte("Данные песни успешно удалены"))
+	if err != nil {
+		http.Error(w, "ошибка при отправке данных", http.StatusInternalServerError)
+		a.l.Error("ошибка при отправке данных: ", err)
+		return
+	}
+}
+
+// updateSongHandler godoc
+//
+// @Summary Обновление песни из библиотеки по ID
+// @Tags		Songs
+// @Description Принимает поля songId , group , song , releaseDate , text , link . .
+// @Accept  json
+// @Produce  json
+// @Param songId query integer false "ID записи"
+// @Param songs body models.Songs true "Данные структуры песни"
+// @Success 200 {string} string "Данные песни успешно обновлены"
+// @Failure 400 {string} string "Отсутствует идентификатор в запросе"
+// @Failure 500 {string} string "Не удалось преобразовать строку в число или Ошибка при обновлении данных"
+// @Router /songs [patch]
+func (a *Api) updateSongHandler(w http.ResponseWriter, r *http.Request) {
+	var song models.Songs
+	queryParams := r.URL.Query()
+
+	songID := queryParams.Get("songId")
+	if songID == "" {
+		a.l.Debug("Отсутствует идентификатор в запросе")
+		http.Error(w, "Отсутствует идентификатор в запросе", http.StatusBadRequest)
+		return
+	}
+	id, err := strconv.Atoi(songID)
+	if err != nil {
+		a.l.Error("не удалось преобразовать строку в число", err)
+	}
+
+	err = json.NewDecoder(r.Body).Decode(&song)
+	if err != nil {
+		http.Error(w, "не удалось проанализировать запрос JSON", http.StatusInternalServerError)
+		a.l.Error("не удалось проанализировать запрос JSON", err)
+		return
+	}
+	song.ID = id
+
+	err = a.repo.UpdateSongById(song)
+	if err != nil {
+		a.l.Error("Ошибка при обновлении данных", err)
+		http.Error(w, "Ошибка при обновлении данных", http.StatusInternalServerError)
+		return
+	}
+	a.l.Info("Данные песни c id %d успешно обновлены", song.ID)
+
+	// Устанавливаем правильный Content-Type для HTML
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write([]byte("Данные песни успешно обновлены"))
 	if err != nil {
 		http.Error(w, "ошибка при отправке данных", http.StatusInternalServerError)
 		a.l.Error("ошибка при отправке данных: ", err)

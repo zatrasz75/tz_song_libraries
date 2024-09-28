@@ -8,6 +8,3 @@ services:
     restart: always
     ports:
       - "49878:5432"
-
-
-# docker compose up -d

@@ -107,6 +107,41 @@ paths:
       summary: Получение данных с фильтрацией по всем полям и пагинацией
       tags:
       - Songs
+    patch:
+      consumes:
+      - application/json
+      description: Принимает поля songId , group , song , releaseDate , text , link
+        . .
+      parameters:
+      - description: ID записи
+        in: query
+        name: songId
+        type: integer
+      - description: Данные структуры песни
+        in: body
+        name: songs
+        required: true
+        schema:
+          $ref: '#/definitions/models.Songs'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные песни успешно обновлены
+          schema:
+            type: string
+        "400":
+          description: Отсутствует идентификатор в запросе
+          schema:
+            type: string
+        "500":
+          description: Не удалось преобразовать строку в число или Ошибка при обновлении
+            данных
+          schema:
+            type: string
+      summary: Обновление песни из библиотеки по ID
+      tags:
+      - Songs
     post:
       consumes:
       - application/json

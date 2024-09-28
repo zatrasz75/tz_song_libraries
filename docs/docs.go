@@ -162,6 +162,56 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "patch": {
+                "description": "Принимает поля songId , group , song , releaseDate , text , link . .",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Songs"
+                ],
+                "summary": "Обновление песни из библиотеки по ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID записи",
+                        "name": "songId",
+                        "in": "query"
+                    },
+                    {
+                        "description": "Данные структуры песни",
+                        "name": "songs",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Songs"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Данные песни успешно обновлены",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Отсутствует идентификатор в запросе",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Не удалось преобразовать строку в число или Ошибка при обновлении данных",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
             }
         },
         "/songs/lyrics": {

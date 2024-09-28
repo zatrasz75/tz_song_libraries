@@ -2,12 +2,21 @@ package main
 
 import (
 	"fmt"
+	"github.com/joho/godotenv"
+	"log"
 	"os"
 	"path/filepath"
 	"zatrasz75/tz_song_libraries/configs"
 	"zatrasz75/tz_song_libraries/internal/app"
 	"zatrasz75/tz_song_libraries/pkg/logger"
 )
+
+// Init Загружает значения из файла .env в систему.
+func init() {
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Файл .env не найден.", err)
+	}
+}
 
 func main() {
 	l := logger.NewLogger()

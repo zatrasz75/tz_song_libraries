@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 	"zatrasz75/tz_song_libraries/internal/models"
@@ -165,4 +166,99 @@ func (s *Store) DeleteSongById(id int) error {
 	}
 
 	return nil
+}
+
+// UpdateSongById Обновление записи по ID
+func (s *Store) UpdateSongById(song models.Songs) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	// Начать транзакцию
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("не удалось запустить транзакцию: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	var query strings.Builder
+	query.Reset()
+	query.WriteString("UPDATE songs SET ")
+
+	var ownerArgs []interface{}
+	var ownerArgIndex int
+	var ownerFieldsUpdated bool
+
+	query, ownerFieldsUpdated, ownerArgs = _dynamicSql(song, query, ownerArgs, ownerArgIndex, ownerFieldsUpdated)
+
+	_, err = tx.Exec(ctx, query.String(), ownerArgs...)
+	if err != nil {
+		return fmt.Errorf("не удалось обновить данные песни: %w", err)
+	}
+
+	// Фиксация транзакции
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("не удалось зафиксировать транзакцию: %w", err)
+	}
+
+	return nil
+}
+
+func _dynamicSql(song models.Songs, query strings.Builder, ownerArgs []interface{}, ownerArgIndex int, ownerFieldsUpdated bool) (strings.Builder, bool, []interface{}) {
+	query.Reset()
+	query.WriteString("UPDATE songs SET ")
+
+	if song.Group != "" {
+		if ownerFieldsUpdated {
+			query.WriteString(", ")
+		}
+		query.WriteString("s_group = $" + strconv.Itoa(ownerArgIndex+1))
+		ownerArgs = append(ownerArgs, song.Group)
+		ownerArgIndex++
+		ownerFieldsUpdated = true
+	}
+	if song.Song != "" {
+		if ownerFieldsUpdated {
+			query.WriteString(", ")
+		}
+		query.WriteString("song = $" + strconv.Itoa(ownerArgIndex+1))
+		ownerArgs = append(ownerArgs, song.Song)
+		ownerArgIndex++
+		ownerFieldsUpdated = true
+	}
+	if song.Detail.ReleaseDate != "" {
+		if ownerFieldsUpdated {
+			query.WriteString(", ")
+		}
+		query.WriteString("release_date = $" + strconv.Itoa(ownerArgIndex+1))
+		ownerArgs = append(ownerArgs, song.Detail.ReleaseDate)
+		ownerArgIndex++
+		ownerFieldsUpdated = true
+	}
+	if song.Detail.Text != "" {
+		if ownerFieldsUpdated {
+			query.WriteString(", ")
+		}
+		query.WriteString("text = $" + strconv.Itoa(ownerArgIndex+1))
+		ownerArgs = append(ownerArgs, song.Detail.Text)
+		ownerArgIndex++
+		ownerFieldsUpdated = true
+	}
+	if song.Detail.Link != "" {
+		if ownerFieldsUpdated {
+			query.WriteString(", ")
+		}
+		query.WriteString("link = $" + strconv.Itoa(ownerArgIndex+1))
+		ownerArgs = append(ownerArgs, song.Detail.Link)
+		ownerArgIndex++
+		ownerFieldsUpdated = true
+	}
+
+	// Добавляем WHERE только в том случае, если какие-либо поля были обновлены
+	if ownerFieldsUpdated {
+		query.WriteString(" WHERE id = $" + strconv.Itoa(ownerArgIndex+1))
+		ownerArgs = append(ownerArgs, song.ID)
+	}
+
+	return query, ownerFieldsUpdated, ownerArgs
 }
