@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 	"zatrasz75/tz_song_libraries/internal/models"
 	"zatrasz75/tz_song_libraries/pkg/postgres"
@@ -44,6 +45,7 @@ func (s *Store) CreatSong(m models.Songs) (int, error) {
 	return id, nil
 }
 
+// GetLibraryData Получение данных библиотеки с фильтрацией по всем полям и пагинацией
 func (s *Store) GetLibraryData(filter string, offset, limit int) ([]models.Songs, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -82,4 +84,85 @@ func (s *Store) GetLibraryData(filter string, offset, limit int) ([]models.Songs
 	}
 
 	return songs, nil
+}
+
+// GetSongLyrics Получение текста песни с пагинацией по куплетам
+func (s *Store) GetSongLyrics(songID string, offset, limit int) ([]string, int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// Получаем весь текст песни по ID
+	query := "SELECT text FROM songs WHERE id = $1"
+	var fullLyrics string
+	err := s.Pool.QueryRow(ctx, query, songID).Scan(&fullLyrics)
+	if err != nil {
+		return nil, 0, fmt.Errorf("не удалось получить текст песни: %w", err)
+	}
+
+	// Разбиваем текст на куплеты
+	lyrics := _splitLyricsByNewline(fullLyrics)
+
+	// Выбираем нужное количество куплетов
+	start := offset - 1
+	end := min(start+limit, len(lyrics))
+	selectedLyrics := lyrics[start:end]
+
+	count := len(selectedLyrics)
+
+	nextPageID := int(offset + limit)
+	if nextPageID > count {
+		nextPageID = count
+	}
+
+	return selectedLyrics, nextPageID, nil
+}
+
+func _splitLyricsByNewline(text string) []string {
+	var lyrics []string
+	var currentLine string
+
+	lines := strings.Split(strings.TrimSpace(text), "\n")
+	for _, line := range lines {
+		if line == "" {
+			if currentLine != "" {
+				lyrics = append(lyrics, currentLine)
+				currentLine = ""
+			}
+		} else {
+			currentLine += "\n" + line
+		}
+	}
+
+	if currentLine != "" {
+		lyrics = append(lyrics, currentLine)
+	}
+
+	return lyrics
+}
+
+// DeleteSongById Удаление записи по ID
+func (s *Store) DeleteSongById(id int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// Начать транзакцию
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("не удалось запустить транзакцию: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	query := "DELETE FROM songs WHERE id = $1"
+	_, err = tx.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("не удалось запись песни по идентификатору: %w", err)
+	}
+
+	// Фиксация транзакции
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("не удалось зафиксировать транзакцию: %w", err)
+	}
+
+	return nil
 }

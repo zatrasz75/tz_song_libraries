@@ -16,6 +16,8 @@ import (
 func registerSongsHandlers(s *mux.Router, a *Api) {
 	s.HandleFunc("", a.creatSongHandler).Methods(http.MethodPost)
 	s.HandleFunc("", a.getLibraryDataHandler).Methods(http.MethodGet)
+	s.HandleFunc("", a.deleteSongHandler).Methods(http.MethodDelete)
+	s.HandleFunc("/lyrics", a.getSongLyricsHandler).Methods(http.MethodGet)
 
 	// Swagger UI
 	s.PathPrefix("/docs/").Handler(http.StripPrefix("/docs/", http.FileServer(http.Dir("./docs/"))))
@@ -171,6 +173,129 @@ func (a *Api) getLibraryDataHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(listJSON)
+	if err != nil {
+		http.Error(w, "ошибка при отправке данных", http.StatusInternalServerError)
+		a.l.Error("ошибка при отправке данных: ", err)
+		return
+	}
+}
+
+// getSongLyricsHandler godoc
+//
+// @Summary Получение текста песни с пагинацией по куплетам
+// @Tags		Songs
+// @Description Принимает поля songId , limit , offset .
+// @Accept  json
+// @Produce  json
+// @Param songId query integer false "ID записи"
+// @Param limit query integer false "Количество записей на странице для пагинации" default(10)
+// @Param offset query integer false "Номер страницы" default(1)
+// @Success 200 {array} models.LyricResponse "Список куплетов"
+// @Failure 400 {string} string "Недопустимый параметр смещения или Недопустимый параметр смещения"
+// @Failure 500 {string} string "Ошибка при получение списка песен или Ошибка при обработке запроса"
+// @Router /songs/lyrics [get]
+func (a *Api) getSongLyricsHandler(w http.ResponseWriter, r *http.Request) {
+	queryParams := r.URL.Query()
+
+	songID := queryParams.Get("songId")
+	limit := queryParams.Get("limit")
+	offset := queryParams.Get("offset")
+
+	var lmt, off int
+	var err error
+	if limit != "" {
+		lmt, err = strconv.Atoi(limit)
+		if err != nil || lmt <= 0 {
+			http.Error(w, "Недопустимый параметр смещения", http.StatusBadRequest)
+			return
+		}
+	} else {
+		lmt = 10
+	}
+
+	if offset != "" {
+		off, err = strconv.Atoi(offset)
+		if err != nil || off < 0 {
+			http.Error(w, "Недопустимый параметр смещения", http.StatusBadRequest)
+			return
+		}
+	} else {
+		off = 1
+	}
+
+	// Предполагаем, что у нас есть метод GetSongLyrics в репозитории
+	lyrics, nextID, err := a.repo.GetSongLyrics(songID, off, lmt)
+	if err != nil {
+		a.l.Error("Ошибка при получении текста песни", err)
+		http.Error(w, "Ошибка при получении текста песни", http.StatusInternalServerError)
+		return
+	}
+
+	// Формируем ответ
+	response := models.LyricResponse{
+		Chunks:     lyrics,
+		NextPageID: int(nextID),
+	}
+
+	// Преобразуем response в JSON
+	jsonResponse, err := json.Marshal(response)
+	if err != nil {
+		a.l.Error("Ошибка при формировании JSON ответа", err)
+		http.Error(w, "Ошибка при формировании ответа", http.StatusInternalServerError)
+		return
+	}
+
+	// Устанавливаем заголовок Content-Type
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(jsonResponse)
+	if err != nil {
+		a.l.Error("Ошибка при записи данных в ответ", err)
+		http.Error(w, "Ошибка при отправке ответа", http.StatusInternalServerError)
+		return
+	}
+}
+
+// deleteSongHandler godoc
+//
+// @Summary Удаление песни из библиотеки по ID
+// @Tags		Songs
+// @Description Принимает поля songId .
+// @Accept  json
+// @Produce  json
+// @Param songId query integer false "ID записи"
+// @Success 200 {string} string "Данные песни успешно удалены"
+// @Failure 400 {string} string "Отсутствует идентификатор в запросе"
+// @Failure 500 {string} string "не удалось преобразовать строку в число или Ошибка при удалении данных"
+// @Router /songs [delete]
+// ]
+func (a *Api) deleteSongHandler(w http.ResponseWriter, r *http.Request) {
+	queryParams := r.URL.Query()
+
+	songID := queryParams.Get("songId")
+	if songID == "" {
+		a.l.Debug("Отсутствует идентификатор в запросе")
+		http.Error(w, "Отсутствует идентификатор в запросе", http.StatusBadRequest)
+		return
+	}
+	id, err := strconv.Atoi(songID)
+	if err != nil {
+		a.l.Error("не удалось преобразовать строку в число", err)
+		http.Error(w, "не удалось преобразовать строку в число", http.StatusInternalServerError)
+		return
+	}
+
+	err = a.repo.DeleteSongById(id)
+	if err != nil {
+		a.l.Error("Ошибка при удалении данных", err)
+		http.Error(w, "Ошибка при удалении данных", http.StatusInternalServerError)
+		return
+	}
+	a.l.Info("Данные песни c id %d успешно удалены", id)
+
+	// Устанавливаем правильный Content-Type для HTML
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write([]byte("Данные песни успешно удалены"))
 	if err != nil {
 		http.Error(w, "ошибка при отправке данных", http.StatusInternalServerError)
 		a.l.Error("ошибка при отправке данных: ", err)

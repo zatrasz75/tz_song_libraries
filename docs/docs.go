@@ -121,10 +121,125 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "delete": {
+                "description": "Принимает поля songId .",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Songs"
+                ],
+                "summary": "Удаление песни из библиотеки по ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID записи",
+                        "name": "songId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Данные песни успешно удалены",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Отсутствует идентификатор в запросе",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "не удалось преобразовать строку в число или Ошибка при удалении данных",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/songs/lyrics": {
+            "get": {
+                "description": "Принимает поля songId , limit , offset .",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Songs"
+                ],
+                "summary": "Получение текста песни с пагинацией по куплетам",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID записи",
+                        "name": "songId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Количество записей на странице для пагинации",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Номер страницы",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список куплетов",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.LyricResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Недопустимый параметр смещения или Недопустимый параметр смещения",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка при получение списка песен или Ошибка при обработке запроса",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
             }
         }
     },
     "definitions": {
+        "models.LyricResponse": {
+            "type": "object",
+            "properties": {
+                "chunks": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "nextPageID": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.SongDetail": {
             "type": "object",
             "properties": {

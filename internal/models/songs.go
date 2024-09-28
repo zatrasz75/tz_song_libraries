@@ -12,3 +12,8 @@ type SongDetail struct {
 	Text        string `json:"text"`
 	Link        string `json:"link"`
 }
+
+type LyricResponse struct {
+	Chunks     []string `json:"chunks"`
+	NextPageID int      `json:"nextPageID"`
+}

@@ -1,5 +1,14 @@
 basePath: /
 definitions:
+  models.LyricResponse:
+    properties:
+      chunks:
+        items:
+          type: string
+        type: array
+      nextPageID:
+        type: integer
+    type: object
   models.SongDetail:
     properties:
       link:
@@ -30,6 +39,34 @@ info:
   version: "1.0"
 paths:
   /songs:
+    delete:
+      consumes:
+      - application/json
+      description: Принимает поля songId .
+      parameters:
+      - description: ID записи
+        in: query
+        name: songId
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные песни успешно удалены
+          schema:
+            type: string
+        "400":
+          description: Отсутствует идентификатор в запросе
+          schema:
+            type: string
+        "500":
+          description: не удалось преобразовать строку в число или Ошибка при удалении
+            данных
+          schema:
+            type: string
+      summary: Удаление песни из библиотеки по ID
+      tags:
+      - Songs
     get:
       consumes:
       - application/json
@@ -99,6 +136,47 @@ paths:
           schema:
             type: string
       summary: Добавление новой песни
+      tags:
+      - Songs
+  /songs/lyrics:
+    get:
+      consumes:
+      - application/json
+      description: Принимает поля songId , limit , offset .
+      parameters:
+      - description: ID записи
+        in: query
+        name: songId
+        type: integer
+      - default: 10
+        description: Количество записей на странице для пагинации
+        in: query
+        name: limit
+        type: integer
+      - default: 1
+        description: Номер страницы
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список куплетов
+          schema:
+            items:
+              $ref: '#/definitions/models.LyricResponse'
+            type: array
+        "400":
+          description: Недопустимый параметр смещения или Недопустимый параметр смещения
+          schema:
+            type: string
+        "500":
+          description: Ошибка при получение списка песен или Ошибка при обработке
+            запроса
+          schema:
+            type: string
+      summary: Получение текста песни с пагинацией по куплетам
       tags:
       - Songs
 swagger: "2.0"
